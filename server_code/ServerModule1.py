@@ -4,7 +4,7 @@
 # provides callable functions for Anvil Webapp
 # this is now in a github repository https://github.com/Berkshire-Archaeological-Society/anii-r2-server.git
 ##
-# Version 070
+# Version 074
 ##      
 # Author: Tony Bakker (BAS)
 #
@@ -275,7 +275,7 @@ def validate_row(row,table_info):
   msg = ""
   return_value = True
   for column_name, value in row.items():
-    column_type = schema_types.get(column_name)
+    column_type = schema_types.get(column_name).lower()
     column_key = schema_keys.get(column_name)
     is_valid = True
 
@@ -297,8 +297,8 @@ def validate_row(row,table_info):
     elif column_name.endswith("Percentage"):
       is_valid, err_msg = validate_percentage(value)
 
-    elif column_type[:3] == "int":
-      is_valid, err_msg = validate_percentage(value)
+    elif column_type.startswith("int") or column_type.endswith("int"):
+      is_valid, err_msg = validate_integer(value)
 
     elif column_type and any(t in column_type.lower() for t in ["decimal", "float", "double", "int"]):
       is_valid, err_msg = validate_decimal(value, column_type)
@@ -314,7 +314,7 @@ def validate_row(row,table_info):
       else:
         is_valid = False
         err_msg = f"Invalid value for {column_name}."
-      
+
     elif column_name in CONFIG["CLIENT"]["column_with_dropdown"].keys():
       # value has to be one of the dropdown list
       if value in CONFIG["CLIENT"]["column_with_dropdown"][column_name]["options"]:
@@ -329,7 +329,7 @@ def validate_row(row,table_info):
       # this check should include <table_name>Id column as it should be a PRI key
       is_valid = False
       err_msg = "Primary key cannot be empty."
-    
+
     # if any check failed set the return_value to be False
     # and add err_msg of check to the msg to be returned
     if not is_valid: 
@@ -350,77 +350,77 @@ def dict_get(data, keys, default=None):
   return data
 
 def dict_ensure_list_items(data_dict, key_path, required_items):
-    """
+  """
     Ensures a nested key path exists as a list containing required_items.
     'key_path' can be a single key ("key") or a sequence of nested keys (["CLIENT", "TextArea_columns"]).
     """
-    # Standardize required_items into a list
-    if isinstance(required_items, (str, bytes)) or not hasattr(required_items, '__iter__'):
-        required_items = [required_items]
+  # Standardize required_items into a list
+  if isinstance(required_items, (str, bytes)) or not hasattr(required_items, '__iter__'):
+    required_items = [required_items]
 
     # Standardize key_path into a list of keys
-    if isinstance(key_path, str):
-        keys = [key_path]
-    else:
-        keys = list(key_path)
+  if isinstance(key_path, str):
+    keys = [key_path]
+  else:
+    keys = list(key_path)
 
     # 1. Traverse or build the nested dictionary hierarchy
-    current_level = data_dict
-    for key in keys[:-1]:
-        if key not in current_level or not isinstance(current_level[key], dict):
-            current_level[key] = {}
-        current_level = current_level[key]
+  current_level = data_dict
+  for key in keys[:-1]:
+    if key not in current_level or not isinstance(current_level[key], dict):
+      current_level[key] = {}
+    current_level = current_level[key]
 
-    target_key = keys[-1]
+  target_key = keys[-1]
 
-    # 2. Retrieve existing list or initialize
-    current_val = current_level.get(target_key)
-    if not isinstance(current_val, list):
-        current_val = []
+  # 2. Retrieve existing list or initialize
+  current_val = current_level.get(target_key)
+  if not isinstance(current_val, list):
+    current_val = []
 
     # 3. Add missing required items
-    for item in required_items:
-        if item not in current_val:
-            current_val.append(item)
+  for item in required_items:
+    if item not in current_val:
+      current_val.append(item)
 
     # 4. Save updated list back
-    current_level[target_key] = current_val
+  current_level[target_key] = current_val
 
 def dict_merge_nested_structure(data_dict, key_path, new_tables_dict):
-    """
+  """
     Navigates to a nested key path and merges a dictionary of tables
     and columns into it, preventing duplicates in the lists.
     """
-    # 1. Standardize key_path into a list of keys
-    if isinstance(key_path, str):
-        keys = [key_path]
-    else:
-        keys = list(key_path)
+  # 1. Standardize key_path into a list of keys
+  if isinstance(key_path, str):
+    keys = [key_path]
+  else:
+    keys = list(key_path)
 
     # 2. Traverse or build the nested dictionary hierarchy
-    current_level = data_dict
-    for key in keys:
-        if key not in current_level or not isinstance(current_level[key], dict):
-            current_level[key] = {}
-        current_level = current_level[key]
+  current_level = data_dict
+  for key in keys:
+    if key not in current_level or not isinstance(current_level[key], dict):
+      current_level[key] = {}
+    current_level = current_level[key]
 
     # 3. 'current_level' is now pointing exactly at the destination (e.g., TextArea_columns)
     # Merge the new tables and their columns into it
-    for table_name, columns in new_tables_dict.items():
-        # Ensure columns are a list
-        if isinstance(columns, (str, bytes)) or not hasattr(columns, "__iter__"):
-            columns = [columns]
+  for table_name, columns in new_tables_dict.items():
+    # Ensure columns are a list
+    if isinstance(columns, (str, bytes)) or not hasattr(columns, "__iter__"):
+      columns = [columns]
 
-        # Initialize the table list if it doesn't exist
-        if table_name not in current_level or not isinstance(
-            current_level[table_name], list
-        ):
-            current_level[table_name] = []
+      # Initialize the table list if it doesn't exist
+    if table_name not in current_level or not isinstance(
+      current_level[table_name], list
+    ):
+      current_level[table_name] = []
 
-        # Append column names safely without adding duplicates
-        for col in columns:
-            if col not in current_level[table_name]:
-                current_level[table_name].append(col)
+      # Append column names safely without adding duplicates
+    for col in columns:
+      if col not in current_level[table_name]:
+        current_level[table_name].append(col)
 
 
 def table_update(table_name,table):
@@ -439,7 +439,7 @@ def table_update(table_name,table):
   # 1. Standardize non-standard spaces (\xa0) and convert whitespace-only strings to NaN
   table.replace(r"\xa0", " ", regex=True, inplace=True)
   table.replace(r"^\s*$", np.nan, regex=True, inplace=True)
-  
+
   # 2. Strip leading/trailing spaces from all object (string) columns
   string_cols = table.select_dtypes(include=["object","string"]).columns
   #table[string_cols] = table[string_cols].apply(lambda col: col.str.strip())
@@ -447,10 +447,10 @@ def table_update(table_name,table):
 
   # 3. Convert all NaN values to None at the end
   table = table.replace({np.nan: None})
-  
+
   # creating column list for insertion: column names in table must be equal to database table column names
   #cols = "`,`".join([str(i) for i in table.columns.tolist()])
- 
+
   # get table description
   table_info = describe_table(table_name)
 
@@ -478,7 +478,7 @@ def table_update(table_name,table):
     row_nr += 1
     logmsg("DEBUG","Update Row: ")
     logmsg("DEBUG",row)
-    
+
     # validate row values
     is_valid, err_msg = validate_row(row,table_info)
     if not is_valid:
@@ -519,11 +519,11 @@ def table_update(table_name,table):
     logmsg("DEBUG",sql_cmd)
     logmsg("DEBUG",all_values)
     try:
-       ret = cur.execute(sql_cmd,all_values)
-       logmsg("DEBUG",ret)
-       conn.commit()
-       msg = "OK. " + table_name +  table_name_id + " " + " " + row[table_name_id] + " successfully updated."
-       logmsg("INFO",msg)
+      ret = cur.execute(sql_cmd,all_values)
+      logmsg("DEBUG",ret)
+      conn.commit()
+      msg = "OK. " + table_name +  table_name_id + " " + " " + row[table_name_id] + " successfully updated."
+      logmsg("INFO",msg)
     except pymysql.Error as err:
       err_msg = format(err)
       logmsg("DEBUG",err_msg)
@@ -545,12 +545,12 @@ def table_insert(table_name,table):
   #
   #logmsg("DEBUG",table)
   conn.ping(reconnect=True)
-  
+
   # clean the table fields
   # 1. Standardize non-standard spaces (\xa0) and convert whitespace-only strings to NaN
   table.replace(r"\xa0", " ", regex=True, inplace=True)
   table.replace(r"^\s*$", np.nan, regex=True, inplace=True)
-  
+
   # 2. Strip leading/trailing spaces from all object (string) columns
   string_cols = table.select_dtypes(include=["object","string"]).columns
   #table[string_cols] = table[string_cols].apply(lambda col: col.str.strip())
@@ -558,9 +558,9 @@ def table_insert(table_name,table):
 
   # 3. Convert all NaN values to None at the end
   table = table.replace({np.nan: None})
-  
+
   cols = "`,`".join([str(i) for i in table.columns.tolist()])
-    
+
   # get table description
   table_info = describe_table(table_name)
 
@@ -610,14 +610,14 @@ def table_insert(table_name,table):
         logmsg("ERROR", msg)
         message = message + msg + "\n"
         continue # with next row
-    
+
     # Now check if table is a special find table (name starts with special_finds_table_prefix)
     #   if so check to see if findId exists in find table
     #     if findId exists than special find entry fails
     #       if findId does not exist, then we add the findId to the find table
-    
+
     findsreg_tablename = dict_get(CONFIG,["DATABASE","findsregister_tablename"],default="findsregister")
-    
+
     if table_name.lower().startswith(database_connect_info["special_finds_table_prefix"]):
       # check if FindId exists in findsregister table
       sql_cmd = f"SELECT 1 FROM `{findsreg_tablename}` WHERE FindId = %s LIMIT 1;"
@@ -626,6 +626,7 @@ def table_insert(table_name,table):
       try:
         cur.execute(sql_cmd,[findid_value])
         result = cur.fetchone()
+        logmsg("DEBUG", f"Search result for FindId in findsregister: {str(result)}")
         if result is None:
           # there is no findId record found so we can create one in the findsregister
           # generrate cols and values for find insert
@@ -654,7 +655,7 @@ def table_insert(table_name,table):
             continue # with next row
         else:
           # found FindId record in finds register
-          msg = f"ERROR. Failed to insert the entry to {table_name}. FindId {findId} already exists in "+ findsreg_tablename + "."
+          msg = f"ERROR. Failed to insert the entry to {table_name}. FindId {findid_value} already exists in "+ findsreg_tablename + "."
           logmsg("ERROR",msg)
           message = message + msg + "\n"
           continue # terminate current loop and continue with next row
@@ -663,7 +664,7 @@ def table_insert(table_name,table):
         logmsg("DEBUG",msg)
         message = message + msg + "\n"
         continue # terminate current loop
-    
+
     # now continue inserting new record in table
     sql_cmd = f"INSERT INTO `{table_name.lower()}` (`{cols}`) VALUES (" + "%s,"*(len(row)-1) + "%s)"
     logmsg("DEBUG",sql_cmd)
@@ -678,11 +679,11 @@ def table_insert(table_name,table):
       if table_name == "siteuserrole":
         #send email notification to user about access to site
         email_msg = ("\nDear %s,\n\n"
-           "This is to notify you that you have been registered to access site %s in the role of %s of the Anchurus-II system for %s (%s)\n\n"
-           "For exact details of your role please login to the above website and click on Help and read the relevant section of the Anchurus II user manual.\n\n"
-           "Best wishes,\n\n"
-           "%s %s - %s\n\n"
-           % (anviluser["firstname"],row["SiteId"],row["Role"],Global_organisation,anvil.server.get_app_origin(),admin_user["firstname"],admin_user["lastname"],admin_user["email"]))
+                     "This is to notify you that you have been registered to access site %s in the role of %s of the Anchurus-II system for %s (%s)\n\n"
+                     "For exact details of your role please login to the above website and click on Help and read the relevant section of the Anchurus II user manual.\n\n"
+                     "Best wishes,\n\n"
+                     "%s %s - %s\n\n"
+                     % (anviluser["firstname"],row["SiteId"],row["Role"],Global_organisation,anvil.server.get_app_origin(),admin_user["firstname"],admin_user["lastname"],admin_user["email"]))
         subject = ("Registration to access site %s for Anchurus-II system %s" % (row["SiteId"],Global_organisation))
         anvil.server.call("send_email",subject,email_msg,anviluser["email"],admin_user["email"])
         logmsg("DEBUG","Send notification email to user "+anviluser["email"])
@@ -698,7 +699,7 @@ def table_insert(table_name,table):
       if table_name.lower().startswith(database_connect_info["special_finds_table_prefix"]):
         row = {"FindId": findid_value}
         delete_row("findsregister", row)
-      
+
     message += msg + "\n"
 
   logmsg("DEBUG","Exiting table_insert")
@@ -722,11 +723,11 @@ def user_authentication():
   user = anvil.users.get_user()
   ip_address = str(anvil.server.context.client.ip)
   msg = "Login connection from " + ip_address + ", User " + str(user['email'])
-  
+
   # Check MariaDB for user authorisation (i.e. which role has the person in accessing the DB)
   # This role will the set in the Anvil user table, which can then be checked in the client and server by a simple call to 
   # anvil.users.get_user(), although to always check this form the server (more secure and accurate)
-  
+
   logmsg("INFO",msg)
   return ip_address
 
@@ -765,7 +766,7 @@ def create_csv(data_list,col_order,csv_name):
   # create the column order list from col_order
   if col_order is not None:
     col_list = sorted(list(col_order[0].keys()),key=lambda x: col_order[0][x])
-  
+
   # check if data_list is empty
   if len(data_list) == 0:
     # data_list is empty so need to create at least a empty data_list with Columns Headings
@@ -773,7 +774,7 @@ def create_csv(data_list,col_order,csv_name):
     for column_name in col_list:
       data[column_name] = None
     data_list = [data]
-  
+
   # Create Pandas DataFrame
   df_tmp = pd.DataFrame(data_list) 
 
@@ -784,7 +785,7 @@ def create_csv(data_list,col_order,csv_name):
   cols_to_drop = [
     col
     for col in df_tmp.columns
-      if col.endswith(RT_EXTENSION) or col in specific_cols_to_drop
+    if col.endswith(RT_EXTENSION) or col in specific_cols_to_drop
   ]
 
   # 3. Drop the identified columns from the DataFrame
@@ -794,7 +795,7 @@ def create_csv(data_list,col_order,csv_name):
   filtered_list = [
     col
     for col in col_list
-      if not col.endswith(RT_EXTENSION) and col not in specific_cols_to_drop
+    if not col.endswith(RT_EXTENSION) and col not in specific_cols_to_drop
   ]
 
   # remove DBAcontrol column
@@ -802,7 +803,7 @@ def create_csv(data_list,col_order,csv_name):
   #  df_tmp.drop("DBAcontrol",axis='columns',inplace=True)
   #if "DBAcontrol" in col_list:
   #  col_list.remove("DBAcontrol")
- 
+
   # remove the select column
   #if "select" in df_tmp.columns:
   #  df_tmp.drop("select",axis='columns',inplace=True)
@@ -818,19 +819,19 @@ def create_csv(data_list,col_order,csv_name):
   # Automatically converts to the best possible types
   #logmsg("DEBUG",df.dtypes)
   df = df.convert_dtypes()
-  
+
   # convert pandas dataframe to string (cannot send all datatypes to client so best to make all of type string)
   # pdf_result = pdf_result.mask(pdf_result.astype(str).eq('None') & df.isna(), '')
   df = df.astype('str')
-      
+
   # make all None values empty string (otherwise they will be sent to client as 'None' string, which is not good for client side processing)
   df.replace(to_replace='None', value='',inplace=True)
   df.replace(to_replace='<NA>', value='',inplace=True)
-  
+
   # 2. Get the CSV content as a string
   # Use .encode('utf-8') to convert the string to bytes, which BlobMedia requires
   csv_bytes = df.to_csv(index=False).encode('utf-8')
-  
+
   # 3. Create the Anvil Media Object
   # - 'text/csv' is the MIME type for a CSV file.
   # - csv_bytes is the content.
@@ -889,15 +890,15 @@ def save_workareas(name,work_areas_dict,site_id):
   rows = app_tables.saved_workareas.search(q.all_of(name=name,email=user["email"]))
   for row in rows:
     row.delete()
-  
+
   # now save the new list of work_areas
   msg = ""
   try:
     app_tables.saved_workareas.add_row(name=name,
-                                      datetime=date_time,
-                                      email=user["email"],
-                                      site=site_id,
-                                      workarea_dict=work_areas_dict)
+                                       datetime=date_time,
+                                       email=user["email"],
+                                       site=site_id,
+                                       workarea_dict=work_areas_dict)
     msg = msg + "OK: Successfully saved workareas for: " + name + "\n"
     logmsg("INFO",msg)
   except Exception as e:
@@ -909,7 +910,8 @@ def save_workareas(name,work_areas_dict,site_id):
 @anvil.server.callable
 def send_email(subject,body,recipient,reply_to=None):
   #
-  from_address = config.get("email","email_from_address",fallback="no-reply@berksarch.co.uk")
+  from_address = dict_get(CONFIG,["EMAIL","email_from_address"],default="no-reply@berksarch.co.uk") 
+  #CONFIG.get("email","email_from_address",fallback="no-reply@berksarch.co.uk")
 
   if reply_to is None:
     # if reply_to not given, use the from address in the configuration file.
@@ -1634,6 +1636,7 @@ def delete_row(table_name,list_rows_to_delete):
       logmsg("DEBUG","Row user to delete: "+str(row))
       return_msg = system_user_delete(row["email"])
       msg = msg + return_msg + "\n"
+    message = msg
   else:
     # add DBAcontrol record
     msg = "Delete a selected list of rows from Table " + table_name + "\n"
@@ -2088,7 +2091,7 @@ def check_DBAcontrol(user,action,description):
     schema = "TBD"
     sql_cmd = """INSERT INTO dbdiary(DBAcontrol, Activity, Project, URL, Description, CreationDt, Schema)
               VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-    email = anvil.users.get_user()['email']
+    email = user
     ip_address = str(anvil.server.context.client.ip)
     activity = "Web session from " + ip_address + ", User " + str(email) + ", " + current_datetime
     row = (new_DBAcontrol,DBA_action_dict[action],project,session_id,description,current_datetime,schema)        
@@ -2116,12 +2119,13 @@ def check_DBAcontrol(user,action,description):
 #
 #
 
+@anvil.server.background_task
 @anvil.server.callable
-def import_file(table_name,file):
+def import_file_task(table_name,file, user_email):
   # add DBAcontrol field
   description = "Import of csv file for table " + table_name
-  user = anvil.users.get_user()
-  DBAcontrol = check_DBAcontrol(user["email"],"b",description)
+  #user = anvil.users.get_user()
+  DBAcontrol = check_DBAcontrol(user_email,"b",description)
   # 
   with anvil.media.TempFile(file) as tempfilename:
     msg = "Receiving " + table_name + " import file from client and storing in temp file: " + tempfilename
@@ -2187,6 +2191,15 @@ def import_file(table_name,file):
     except Exception as e:
       ret_msg = f"Error reading import file for table {table_name}. {str(e)}\n"
     return ret_msg
+
+
+# 2. Server-callable wrapper that launches the background task
+@anvil.server.callable
+def start_import_job(table_name, file):
+  user = anvil.users.get_user()
+  user_email = user["email"] if user else None
+  task = anvil.server.launch_background_task("import_file_task", table_name, file, user_email)
+  return task
 
 #
 # Functions to handle log file compression
@@ -2397,8 +2410,8 @@ else:
     body = ("\nHi %s %s,"
             "\n\nThis is to notify that your email address %s has been configured as primary System Administrator for %s in the Anchurus-II Web Application with URL %s.\n\n"
             "kind regards\n\nThe Anchurus-II service"
-            % (users_info["admin_firstname"],users_info["admin_lastname"],email,client_info["organisation"],anvil.server.get_app_origin()))
-    anvil.server.call("send_email","Anchurus-II system administrator",body,email)
+            % (users_info["admin_firstname"],users_info["admin_lastname"],users_info["admin_user"],client_info["organisation"],anvil.server.get_app_origin()))
+    anvil.server.call("send_email","Anchurus-II system administrator",body,users_info["admin_user"])
 logmsg('INFO',msg)
 
 #send_email("Anvil app server startup","Startup completed","tony.bakker@berksarch.co.uk",Global_email_from_address)

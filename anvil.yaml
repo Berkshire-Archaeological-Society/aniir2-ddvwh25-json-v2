@@ -82,8 +82,8 @@ dependencies:
 - dep_id: dep_u7h63wh2m50rm
   resolution_hints: {app_id: C6ZZPAPN4YYF5NVJ, name: Anvil Extras, package_name: anvil_extras}
   version: {version_tag: v3.6.1}
-metadata: {logo_img: 'asset:logo.png', title: aniir2_ddvwh25_json}
-name: Clone of aniir2_ddvwh25_json
+metadata: {logo_img: 'asset:logo.png', title: aniir2_ddvwh25_json_v2}
+name: aniir2_ddvwh25_json_v2
 native_deps:
   head_html: |-
     <script>
@@ -109,7 +109,7 @@ native_deps:
     </script>
 
     <link rel="icon" href="_/theme/favicon.ico">
-package_name: aniir2_ddvwh25_json
+package_name: aniir2_ddvwh25_json_v2
 renamed: true
 runtime_options:
   client_version: '3'
